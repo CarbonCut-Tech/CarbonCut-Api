@@ -1,0 +1,23 @@
+┌─────────────────────────────────────────────────────────────┐
+│ Configuration Layer (Database/Config Files)                  │
+│ - Emission coefficients                                      │
+│ - Network energy constants                                   │
+│ - Device power profiles                                      │
+│ - Platform-specific multipliers                              │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Service Layer (Business Logic)                               │
+│ - Session matching                                           │
+│ - Emission calculation orchestration                         │
+│ - Traffic classification (ads vs organic)                    │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Calculation Engines (Pluggable)                              │
+│ - GHG Protocol Engine                                        │
+│ - Ad Platform Engine (Google Ads, Facebook, etc.)            │
+│ - Organic Traffic Engine                                     │
+└─────────────────────────────────────────────────────────────┘

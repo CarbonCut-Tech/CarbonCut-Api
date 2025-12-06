@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: compose/production/Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DEBUG=False
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:80/health/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: compose/production/Dockerfile
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DEBUG=False
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info --concurrency=4
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: compose/production/Dockerfile
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DEBUG=False
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info

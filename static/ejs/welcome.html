@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to CarbonCut!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d5a27;
+        }
+        .title {
+            color: #2d5a27;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #16a34a;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .features {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🌱 CarbonCut</div>
+        </div>
+        
+        <h1 class="title">Welcome to CarbonCut, <%= name %>! 🎉</h1>
+        
+        <p>
+            Thank you for joining the fight against climate change! Your journey towards carbon neutrality starts now.
+        </p>
+        
+        <div class="features">
+            <h3 style="color: #16a34a; margin-top: 0;">What you can do with CarbonCut:</h3>
+            <ul>
+                <li>🧮 <strong>Calculate</strong> your organization's carbon footprint</li>
+                <li>🛒 <strong>Purchase</strong> verified carbon credits</li>
+                <li>📈 <strong>Track</strong> your sustainability progress</li>
+                <li>🎯 <strong>Achieve</strong> your net-zero goals</li>
+                <li>📊 <strong>Generate</strong> detailed impact reports</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="https://carboncut.com/dashboard" class="button">
+                Start Your Carbon Journey →
+            </a>
+        </div>
+        
+        <p>
+            Our team is here to support you every step of the way. If you have any questions, 
+            don't hesitate to reach out!
+        </p>
+        
+        <div class="footer">
+            <p>
+                Need help getting started? Contact us at 
+                <a href="mailto:support@carboncut.com" style="color: #16a34a;">support@carboncut.com</a>
+            </p>
+            <p>
+                This email was sent to <strong><%= email %></strong>
+            </p>
+            <p style="font-size: 12px; color: #999;">
+                CarbonCut - Driving real-world sustainability outcomes
+            </p>
+        </div>
+    </div>
+</body>
+</html>

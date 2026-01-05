@@ -219,3 +219,4 @@ localstack_data/
 /test.py
 /testpy.py
 /.DS_Store
+start.sh

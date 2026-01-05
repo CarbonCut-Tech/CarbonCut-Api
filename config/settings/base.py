@@ -10,6 +10,8 @@ DEBUG = False
 ALLOWED_HOSTS = []
 
 
+GDAL_LIBRARY_PATH = '/opt/homebrew/Cellar/geos/3.14.1/lib/libgeos_c.dylib'  
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -17,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis'
 ]
 
 for app in os.listdir(os.path.join(BASE_DIR, "apps")):

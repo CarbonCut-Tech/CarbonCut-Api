@@ -62,3 +62,9 @@ class GoogleAdsConnectionResponse(BaseModel):
     customer_id: Optional[str] = None
     customer_name: Optional[str] = None
     email: Optional[str] = None
+
+class SignUpRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    email: EmailStr
+    companyName: str = Field(..., min_length=1, max_length=255)
+    phoneNumber: str = Field(..., min_length=5, max_length=20)

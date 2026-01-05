@@ -1,13 +1,14 @@
+from apps.apikey.models import IndustryCategory, Product
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
 
-
 class CreateAPIKeyRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     domain: str = Field(default='*', max_length=255)
-
+    industry_category: Optional[IndustryCategory] = None
+    product: Optional[Product] = None
 
 class APIKeyResponse(BaseModel):
     id: str
@@ -15,6 +16,8 @@ class APIKeyResponse(BaseModel):
     prefix: str
     domain: str
     is_active: bool
+    industry_category: Optional[str] = None
+    product: Optional[str] = None
     last_used_at: Optional[str] = None
     created_at: str
     conversion_rules_count: int

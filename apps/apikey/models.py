@@ -1,13 +1,37 @@
 import uuid
 from django.db import models
 from django.utils import timezone
+from django.db import models
+from django.utils.translation import gettext_lazy as _
 
+class IndustryCategory(models.TextChoices):
+    INTERNET = 'internet', _('Internet')
+    OIL_AND_GAS = 'oil_and_gas', _('Oil and Gas')
+
+class Product(models.TextChoices):
+    ADS = 'ads', _('Ads')
+    WEB = 'web', _('Web')
+    LUBRICANT = 'lubricant', _('Lubricant')
 
 class APIKey(models.Model):
     external_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     key = models.CharField(max_length=100, unique=True, db_index=True)
     name = models.CharField(max_length=255)
     user_id = models.CharField(max_length=100, db_index=True)
+    industry_category = models.CharField(
+        max_length=50,
+        choices=IndustryCategory.choices,
+        null=True,
+        blank=True,
+        help_text="Industry category for the API key"
+    )
+    product = models.CharField(
+        max_length=50,
+        choices=Product.choices,
+        null=True,
+        blank=True,
+        help_text="Product within the industry category"
+    )
     is_active = models.BooleanField(default=True)
     usage_count = models.IntegerField(default=0)
     last_used_at = models.DateTimeField(null=True, blank=True)
@@ -21,11 +45,12 @@ class APIKey(models.Model):
             models.Index(fields=['user_id']),
             models.Index(fields=['key']),
             models.Index(fields=['is_active']),
+            models.Index(fields=['industry_category']),
+            models.Index(fields=['product']),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.key[:10]}...)"
-
 
 class ConversionRuleType(models.TextChoices):
     URL = 'url', 'URL Match'

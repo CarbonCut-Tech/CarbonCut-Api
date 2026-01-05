@@ -14,10 +14,12 @@ class Product(models.TextChoices):
     LUBRICANT = 'lubricant', _('Lubricant')
 
 class APIKey(models.Model):
+    # use base model
     external_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     key = models.CharField(max_length=100, unique=True, db_index=True)
     name = models.CharField(max_length=255)
     user_id = models.CharField(max_length=100, db_index=True)
+    # this should be stored at org level
     industry_category = models.CharField(
         max_length=50,
         choices=IndustryCategory.choices,
@@ -44,9 +46,9 @@ class APIKey(models.Model):
         indexes = [
             models.Index(fields=['user_id']),
             models.Index(fields=['key']),
-            models.Index(fields=['is_active']),
-            models.Index(fields=['industry_category']),
-            models.Index(fields=['product']),
+            models.Index(fields=['is_active']), # what is point of indexing booleans?
+            models.Index(fields=['industry_category']), # what is point of indexing sparse enums?
+            models.Index(fields=['product']), # what is point of indexing sparse enums?
         ]
 
     def __str__(self):
@@ -69,6 +71,7 @@ class ConversionMatchType(models.TextChoices):
 
 
 class ConversionRule(models.Model):
+    # use base models everywhere
     external_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     api_key = models.ForeignKey(APIKey, on_delete=models.CASCADE, related_name='conversion_rules')
     rule_type = models.CharField(max_length=50, choices=ConversionRuleType.choices, default=ConversionRuleType.URL)
@@ -102,6 +105,9 @@ class ConversionRule(models.Model):
         return f"{self.name} ({self.rule_type}) - {self.api_key.name}"
 
     def increment_conversion_count(self):
+        # 1. i dont see any usage
+        # 2. please take care for consistency while updating
+        # 3. whenever you do update operations, think about what will happen when under load 1000s of requests update same row 
         self.conversion_count += 1
         self.last_triggered_at = timezone.now()
         self.save(update_fields=['conversion_count', 'last_triggered_at'])

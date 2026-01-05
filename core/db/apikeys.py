@@ -70,6 +70,7 @@ class APIKeyData:
         except DjangoAPIKey.DoesNotExist:
             return False
     
+    # do not to this this will choke your db under high load
     def increment_usage(self, api_key: APIKey) -> APIKey:
         from apps.apikey.models import APIKey as DjangoAPIKey
         from django.utils import timezone

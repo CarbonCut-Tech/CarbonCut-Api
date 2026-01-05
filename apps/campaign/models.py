@@ -71,6 +71,7 @@ class UTMParameter(models.Model):
 
 
 class CampaignEmission(models.Model):
+    # didnt we discuss all accounting will be done in a centralized way?
     external_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='emissions')
     

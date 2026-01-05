@@ -32,7 +32,9 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
+# we should call this organization
 class User(AbstractBaseUser):
+    # i dont see any indexes
     id = models.TextField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     name = models.TextField(blank=True, null=True)
@@ -41,11 +43,14 @@ class User(AbstractBaseUser):
     createdat = models.DateTimeField(db_column='createdAt', auto_now_add=True)
     updatedat = models.DateTimeField(db_column='updatedAt', auto_now=True)
 
+    # otp should not be stored in plain text
     otpcode = models.TextField(db_column='otpCode', blank=True, null=True)
     otpexpiry = models.DateTimeField(db_column='otpExpiry', blank=True, null=True)
     otpverified = models.BooleanField(db_column='otpVerified', default=False)
     isactive = models.BooleanField(db_column='isActive', default=True)
     onboarded = models.BooleanField(default=False)
+
+    # why do we need this?
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 

@@ -27,7 +27,7 @@ class EventDispatcher:
             'reference_id': result.reference_id,
             'reference_type': result.reference_type,
             'metadata': result.metadata
-        }
+        } # why cant you return  result directly?
     
     # def list_supported_events(self) -> list:
     #     return EventProcessorRegistry.list_event_types()

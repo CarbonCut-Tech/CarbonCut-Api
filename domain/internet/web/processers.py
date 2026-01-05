@@ -101,6 +101,7 @@ class InternetWebProcessor(BaseEventProcessor):
         
         result = calculator.calculate(calc_input)
         
+        # where are we having conversion vs impresion distinction?
         metadata = self._build_metadata(payload, event_subtype, device_type, bytes_transferred, avg_page_size_mb, result)
         
         return EventProcessingResult(

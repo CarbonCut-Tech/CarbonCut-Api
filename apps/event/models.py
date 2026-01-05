@@ -127,7 +127,7 @@ class ProcessedEvent(models.Model):
     def __str__(self):
         return f"{self.reference_type}:{self.reference_id}"
 
-# this should be in common codebasee
+# this should be in core
 class CarbonBalance(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = models.CharField(max_length=255, unique=True, db_index=True)
@@ -142,7 +142,7 @@ class CarbonBalance(models.Model):
         verbose_name = 'Carbon Balance'
         verbose_name_plural = 'Carbon Balances'
 
-# this should be in common codebasee
+# this should be in core
 class CarbonTransaction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = models.CharField(max_length=255, db_index=True)

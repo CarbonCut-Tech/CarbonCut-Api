@@ -82,6 +82,7 @@ class InternetAdsProcessor(BaseEventProcessor):
     def process(self, payload: dict) -> EventProcessingResult:
         calculator = InternetAdsCalculator()
 
+        # parse payload with pydantic
         utm_params = payload.get('utm_params', {})
 
         platform = self._extract_platform(utm_params)

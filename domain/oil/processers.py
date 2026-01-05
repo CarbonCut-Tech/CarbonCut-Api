@@ -32,7 +32,7 @@ class OilEventPayload(BaseModel):
 class OilGasLubricantProcessor(BaseEventProcessor):
     @property
     def event_type(self) -> str:
-        return "oil_gas_lubricant"
+        return "oil_gas_lubricant" # use constants here
     
     def validate_payload(self, payload: dict) -> dict:
         validated = OilEventPayload(**payload)
@@ -69,4 +69,6 @@ class OilGasLubricantProcessor(BaseEventProcessor):
             }
         )
 
+
+# nice to have: registration with annotations
 EventProcessorRegistry.register(OilGasLubricantProcessor)

@@ -14,6 +14,7 @@ def process_event_batch_task(self, events_data: List[Dict[str, Any]]):
     from core.db.carbon import CarbonData
     from core.db.events import ProcessedEventData
     from decimal import Decimal
+    # why are we importing here?
     
     try:
         processed_event_data = ProcessedEventData()
@@ -34,6 +35,7 @@ def process_event_batch_task(self, events_data: List[Dict[str, Any]]):
                 event_type = event['event_type']
                 payload = event['payload']
                 user_id = event['user_id']
+                # api key should be validated before and org id/user id should be passed here
                 api_key = event.get('api_key')
 
                 processor = dispatcher.get_processor(event_type)
@@ -75,6 +77,8 @@ def process_event_batch_task(self, events_data: List[Dict[str, Any]]):
                     metadata=result.metadata
                 )
                 
+                # what will happen if two events come in parallel?
+                # what will happen if save_transaction is successful but save_balance fails?
                 carbon_data.save_transaction(transaction)
                 carbon_data.save_balance(balance)
                 

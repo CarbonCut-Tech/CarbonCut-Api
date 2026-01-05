@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class CarbonData:
     def get_balance(self, user_id: str) -> CarbonBalance:
+        # why are we importing here?
         from apps.event.models import CarbonBalance as DjangoCarbonBalance
         
         orm_balance, created = DjangoCarbonBalance.objects.get_or_create(

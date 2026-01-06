@@ -1,29 +1,26 @@
-from typing import Dict, Type, Optional
-from .base import BaseEventProcessor
+from typing import Type, Dict
+from domain.base import BaseEventProcessor
 import logging
 
 logger = logging.getLogger(__name__)
+def event_processor(event_type: str):
+    def decorator(cls: Type[BaseEventProcessor]):
+        EventProcessorRegistry.register(cls)
+        logger.info(f"Registered event processor: {event_type} -> {cls.__name__}")
+        return cls
+    return decorator
 
 class EventProcessorRegistry:
-    _processors: Dict[str, Type[BaseEventProcessor]] = {}
-    
+    _processors: Dict[str, BaseEventProcessor] = {}
     @classmethod
     def register(cls, processor_class: Type[BaseEventProcessor]):
-        instance = processor_class()
-        cls._processors[instance.event_type] = processor_class
-        logger.info(f"Registered event processor: {instance.event_type}")
-    
+        processor = processor_class()
+        event_type = processor.event_type
+        
+        if event_type in cls._processors:
+            logger.warning(f"Overwriting processor for {event_type}")
+        
+        cls._processors[event_type] = processor
     @classmethod
-    def get_processor(cls, event_type: str) -> Optional[BaseEventProcessor]:
-        processor_class = cls._processors.get(event_type)
-        if processor_class:
-            return processor_class()
-        return None
-    
-    @classmethod
-    def list_event_types(cls) -> list:
-        return list(cls._processors.keys())
-    
-    @classmethod
-    def is_registered(cls, event_type: str) -> bool:
-        return event_type in cls._processors
+    def get_processor(cls, event_type: str) -> BaseEventProcessor:
+        return cls._processors.get(event_type)

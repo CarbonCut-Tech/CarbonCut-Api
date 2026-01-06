@@ -5,8 +5,8 @@ from datetime import datetime
 from domain.base import BaseEventProcessor, EventProcessingResult
 from domain.registry import EventProcessorRegistry
 from calculators.internet_website import InternetWebsiteCalculator
-
-
+from apps.common.event_types import EventTypes
+from domain.registry import event_processor
 class SDKEventPayload(BaseModel):
     event: str = Field()
     session_id: str
@@ -65,11 +65,11 @@ class SDKEventPayload(BaseModel):
         populate_by_name = True
         extra = 'allow'
 
-
+@event_processor(EventTypes.INTERNET_WEB)
 class InternetWebProcessor(BaseEventProcessor):
     @property
     def event_type(self) -> str:
-        return "internet_web"
+        return EventTypes.INTERNET_WEB
     
     def validate_payload(self, payload: dict) -> dict:
         validated = SDKEventPayload(**payload)
@@ -224,6 +224,4 @@ class InternetWebProcessor(BaseEventProcessor):
         
         return metadata
 
-
-# Register the unified processor
 EventProcessorRegistry.register(InternetWebProcessor)

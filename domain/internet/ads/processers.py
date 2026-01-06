@@ -5,8 +5,8 @@ from datetime import datetime
 from domain.base import BaseEventProcessor, EventProcessingResult
 from domain.registry import EventProcessorRegistry
 from calculators import InternetAdsCalculator, Platform, AdFormat
-
-
+from apps.common.event_types import EventTypes
+from domain.registry import event_processor
 class AdsEventPayload(BaseModel):
     event: str
     session_id: str
@@ -69,11 +69,11 @@ class AdsEventPayload(BaseModel):
         populate_by_name = True
         extra = 'allow'
 
-
+@event_processor(EventTypes.INTERNET_ADS)
 class InternetAdsProcessor(BaseEventProcessor):
     @property
     def event_type(self) -> str:
-        return "internet_ads"
+        return EventTypes.INTERNET_ADS
     
     def validate_payload(self, payload: dict) -> dict:
         validated = AdsEventPayload(**payload)
@@ -190,6 +190,4 @@ class InternetAdsProcessor(BaseEventProcessor):
         
         return 'desktop'
 
-
-# Register the unified processor
 EventProcessorRegistry.register(InternetAdsProcessor)

@@ -4,14 +4,13 @@ from datetime import datetime
 from core.models.carbon_account import CarbonBalance, CarbonTransaction
 from django.db.models import F
 from django.db import transaction
+from apps.event.models import CarbonBalance as DjangoCarbonBalance
+from apps.event.models import CarbonTransaction as DjangoCarbonTransaction
 import logging
 
 logger = logging.getLogger(__name__)
-
 class CarbonData:
     def get_balance(self, user_id: str) -> CarbonBalance:
-        from apps.event.models import CarbonBalance as DjangoCarbonBalance
-        
         orm_balance, created = DjangoCarbonBalance.objects.get_or_create(
             user_id=user_id,
             defaults={

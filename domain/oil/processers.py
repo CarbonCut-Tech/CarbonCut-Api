@@ -5,6 +5,8 @@ from datetime import datetime
 from domain.base import BaseEventProcessor, EventProcessingResult
 from domain.registry import EventProcessorRegistry
 from calculators.oil_gas_lubricant import OilGasLubricantCalculator
+from apps.common.event_types import EventTypes
+from domain.registry import event_processor
 
 
 class OilEventPayload(BaseModel):
@@ -28,11 +30,11 @@ class OilEventPayload(BaseModel):
             raise ValueError('ended_at must be after started_at')
         return v
 
-
+@event_processor(EventTypes.OIL_GAS_LUBRICANT)
 class OilGasLubricantProcessor(BaseEventProcessor):
     @property
     def event_type(self) -> str:
-        return "oil_gas_lubricant"
+        return EventTypes.OIL_GAS_LUBRICANT 
     
     def validate_payload(self, payload: dict) -> dict:
         validated = OilEventPayload(**payload)
@@ -46,7 +48,6 @@ class OilGasLubricantProcessor(BaseEventProcessor):
             'volume_liters': payload['volume_liters']
         })
         
-        # Calculate duration
         duration_seconds = (
             payload['ended_at'] - payload['started_at']
         ).total_seconds()

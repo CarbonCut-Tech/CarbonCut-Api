@@ -220,3 +220,4 @@ localstack_data/
 /testpy.py
 /.DS_Store
 start.sh
+constants

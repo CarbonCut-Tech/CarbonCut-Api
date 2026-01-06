@@ -43,7 +43,7 @@ class CarbonOffset:
     provider: str
     certificate_id: str
     status: str = 'completed'
-    purchased_at: datetime = field(default_factory=timezone.now)  # Use timezone-aware datetime
+    purchased_at: datetime = field(default_factory=timezone.now) 
     metadata: dict = field(default_factory=dict)
     
     @property

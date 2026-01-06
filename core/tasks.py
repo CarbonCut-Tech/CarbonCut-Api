@@ -2,117 +2,123 @@ from celery import shared_task
 import logging
 from typing import Dict, Any, List
 import traceback
-from django.db import transaction
+from django.db import transaction, DatabaseError
 from django.db.models import F
+from decimal import Decimal
+from core.services.event_dispatcher import EventDispatcher
+from core.services.carbon_accounting import CarbonAccountingService
+from core.services.session.session_service import SessionService
+from core.db.carbon import CarbonData
+from core.db.events import ProcessedEventData
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_event_batch_task(self, events_data: List[Dict[str, Any]]):
-    from core.services.event_dispatcher import EventDispatcher
-    from core.services.carbon_accounting import CarbonAccountingService
-    from core.services.session.session_service import SessionService
-    from core.services.apikey_service import APIKeyService
-    from core.db.carbon import CarbonData
-    from core.db.events import ProcessedEventData
-    from decimal import Decimal
+    processed_event_data = ProcessedEventData()
+    carbon_service = CarbonAccountingService()
+    carbon_data = CarbonData()
+    session_service = SessionService()
+    dispatcher = EventDispatcher()
     
-    try:
-        processed_event_data = ProcessedEventData()
-        carbon_service = CarbonAccountingService()
-        carbon_data = CarbonData()
-        session_service = SessionService()
-        apikey_service = APIKeyService()
-        dispatcher = EventDispatcher()
+    logger.info(f"[CELERY] Processing {len(events_data)} events asynchronously")
+    
+    processed_count = 0
+    skipped_count = 0
+    failed_count = 0
+    
+    for event in events_data:
+        try:
+            with transaction.atomic():
+                event_type = event['event_type']
+                payload = event['payload']
+                user_id = event['user_id']
+                
+                processor = dispatcher.get_processor(event_type)
+                if not processor:
+                    logger.error(f"No processor for {event_type}")
+                    _log_failed_event(event, f"No processor found for {event_type}")
+                    failed_count += 1
+                    continue
+                
+                result = processor.process(payload)
+            
+                if processed_event_data.is_processed(
+                    result.reference_id,
+                    result.reference_type
+                ):
+                    logger.info(f"Event already processed: {result.reference_id}")
+                    skipped_count += 1
+                    continue
+
+                processed_event_data.mark_processed(
+                    reference_id=result.reference_id,
+                    reference_type=result.reference_type,
+                    user_id=user_id,
+                    event_type=event_type,
+                    kg_co2_emitted=result.kg_co2_emitted,
+                    metadata=result.metadata
+                )
+                from apps.event.models import CarbonBalance as DjangoCarbonBalance
+                
+                django_balance = DjangoCarbonBalance.objects.select_for_update().get_or_create(
+                    user_id=user_id,
+                    defaults={
+                        'total_emissions_kg': Decimal('0'),
+                        'balance_kg': Decimal('0')
+                    }
+                )[0]
+                
+                balance = carbon_data._balance_to_domain(django_balance)
+                
+                emission_amount = result.kg_co2_emitted
+                if not isinstance(emission_amount, Decimal):
+                    emission_amount = Decimal(str(emission_amount))
+
+                carbon_transaction = carbon_service.record_emission(
+                    balance=balance,
+                    amount_kg=emission_amount,
+                    reference_id=result.reference_id,
+                    metadata=result.metadata
+                )
+                carbon_data.save_transaction(carbon_transaction)
+                carbon_data.save_balance(balance)
+                try:
+                    if 'session_id' in payload:
+                        session_service.update_session_emissions(
+                            session_id=payload['session_id'],
+                            emission_amount=float(emission_amount)
+                        )
+                except Exception as session_error:
+                    logger.warning(f"Session update failed: {session_error}")
+                
+                processed_count += 1
+                logger.info(f"[CELERY] Processed {event_type}: {emission_amount}kg CO2e for user {user_id}")
         
-        logger.info(f"[CELERY] Processing {len(events_data)} events asynchronously")
-        
-        processed_count = 0
-        skipped_count = 0
-        failed_count = 0
-        
-        for event in events_data:
-            try:
-                with transaction.atomic():
-                    event_type = event['event_type']
-                    payload = event['payload']
-                    user_id = event['user_id']
-                    api_key = event.get('api_key')
-
-                    processor = dispatcher.get_processor(event_type)
-                    if not processor:
-                        logger.error(f"No processor for {event_type}")
-                        _log_failed_event(event, f"No processor found for {event_type}")
-                        failed_count += 1
-                        continue
-
-                    result = processor.process(payload)
-
-                    if processed_event_data.is_processed(
-                        result.reference_id,
-                        result.reference_type
-                    ):
-                        logger.info(f"Event already processed: {result.reference_id}")
-                        skipped_count += 1
-                        continue
-
-                    processed_event_data.mark_processed(
-                        reference_id=result.reference_id,
-                        reference_type=result.reference_type,
-                        user_id=user_id,
-                        event_type=event_type,
-                        kg_co2_emitted=result.kg_co2_emitted,
-                        metadata=result.metadata
-                    )
-
-                    balance = carbon_data.get_balance(user_id)
-                    
-                    emission_amount = result.kg_co2_emitted
-                    if not isinstance(emission_amount, Decimal):
-                        emission_amount = Decimal(str(emission_amount))
-                    
-                    transaction = carbon_service.record_emission(
-                        balance=balance,
-                        amount_kg=emission_amount,
-                        reference_id=result.reference_id,
-                        metadata=result.metadata
-                    )
-                    
-                    carbon_data.save_transaction(transaction)
-                    carbon_data.save_balance(balance)
-                    
-                    if api_key:
-                        api_key_obj = apikey_service.validate_api_key(api_key)
-                        if api_key_obj:
-                            session_service.update_or_create(payload, api_key_obj, float(emission_amount))
-
-                    processed_count += 1
-                    logger.info(f"[CELERY] Processed {event_type}: {emission_amount}kg CO2e for user {user_id}")
-
-            except Exception as e:
-                error_msg = str(e)
-                error_trace = traceback.format_exc()
-                logger.error(f"Failed to process event: {error_msg}", exc_info=True)
-                _log_failed_event(event, error_msg, error_trace)
-                failed_count += 1
-                continue
-
-        logger.info(
-            f"[CELERY] Batch complete: {processed_count} processed, "
-            f"{skipped_count} skipped, {failed_count} failed"
-        )
-
-        return {
-            'status': 'completed',
-            'processed': processed_count,
-            'skipped': skipped_count,
-            'failed': failed_count
-        }
-
-    except Exception as e:
-        logger.error(f"Batch processing error: {e}", exc_info=True)
-        raise self.retry(exc=e, countdown=60)
-
+        except DatabaseError as db_error:
+            logger.error(f"Database error processing event: {db_error}", exc_info=True)
+            raise self.retry(exc=db_error, countdown=60)
+            
+        except Exception as e:
+            error_msg = str(e)
+            error_trace = traceback.format_exc()
+            logger.error(f"Failed to process event: {error_msg}", exc_info=True)
+            _log_failed_event(event, error_msg, error_trace)
+            failed_count += 1
+            continue
+    
+    logger.info(
+        f"[CELERY] Batch complete: {processed_count} processed, "
+        f"{skipped_count} skipped, {failed_count} failed"
+    )
+    
+    return {
+        'status': 'completed',
+        'processed': processed_count,
+        'skipped': skipped_count,
+        'failed': failed_count
+    }
 
 def _log_failed_event(event: Dict[str, Any], error_msg: str, error_trace: str = ""):
     try:
@@ -150,7 +156,6 @@ def retry_failed_events():
     
     for failed_event_id in failed_events[:10].values_list('id', flat=True):
         try:
-            # locking to prevent re fetch 
             with transaction.atomic():
                 failed_event = FailedEvent.objects.select_for_update(
                     skip_locked=True  
@@ -254,3 +259,63 @@ def mark_inactive_sessions_task():
     except Exception as e:
         logger.error(f"Failed to mark inactive sessions: {e}", exc_info=True)
         raise
+
+@shared_task
+def aggregate_monthly_emissions(user_id: str, month: int, year: int):
+    from core.services.emission_aggregator import EmissionAggregator
+    try:
+        aggregator = EmissionAggregator()
+        result = aggregator.calculate_monthly_emissions(user_id, month, year)
+        
+        logger.info(
+            f"Monthly aggregation complete for {user_id} ({year}-{month:02d}): "
+            f"{result['total_kg']}kg CO2"
+        )
+        return {
+            'success': True,
+            'user_id': user_id,
+            'month': month,
+            'year': year,
+            'total_kg': result['total_kg']
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to aggregate monthly emissions: {e}", exc_info=True)
+        raise
+
+
+@shared_task
+def aggregate_all_users_monthly():
+    from apps.auth.models import User
+    from datetime import datetime, timedelta
+
+    today = datetime.now()
+    first_of_month = today.replace(day=1)
+    last_month = first_of_month - timedelta(days=1)
+    month = last_month.month
+    year = last_month.year
+
+    users = User.objects.filter(isactive=True, onboarded=True)
+    
+    logger.info(f"Starting monthly aggregation for {users.count()} users: {year}-{month:02d}")
+    
+    success_count = 0
+    error_count = 0
+    
+    for user in users:
+        try:
+            aggregate_monthly_emissions.delay(str(user.id), month, year)
+            success_count += 1
+        except Exception as e:
+            logger.error(f"Failed to queue aggregation for user {user.id}: {e}")
+            error_count += 1
+    
+    logger.info(
+        f"Monthly aggregation queued: {success_count} success, {error_count} errors"
+    )
+    
+    return {
+        'success': True,
+        'queued': success_count,
+        'errors': error_count
+    }

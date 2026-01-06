@@ -1,12 +1,9 @@
-
 from django.urls import path, include
-from .controllers.apikey_config import APIKeyConfigView
 
 urlpatterns = [
+    path('', include('core.api.urls.emission_sources')),  
+    path('apikeys/', include('core.api.urls.apikeys')),
     path('auth/', include('core.api.urls.auth')),
-    
-    path('keys/', include('core.api.urls.apikeys')),
-    
     path('events/', include('core.api.urls.events')),
-    
+    path('campaigns/', include('core.api.urls.campaigns')),
 ]

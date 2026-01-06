@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from decimal import Decimal
 
 @dataclass
@@ -61,3 +61,48 @@ class OAuthCredential:
             return False
         from datetime import timedelta
         return datetime.now() >= (self.expires_at - timedelta(minutes=5))
+@dataclass
+class CloudProviderConfig:
+    provider_name: str
+    api_key: str
+    secret_key: str
+    region: str
+    account_id: str
+    extras: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class CDNConfig:
+    cdn_provider: str
+    api_key: str
+    domain: str
+    ttl: int  # Time to live in seconds
+    extras: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class WorkforceConfig:
+    enable_travel: bool
+    travel_policy: str
+    remote_work_enabled: bool
+    office_location: Optional[str] = None
+    extras: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class OnPremConfig:
+    server_id: str
+    ip_address: str
+    location: str
+    capacity: Decimal
+    current_usage: Decimal
+    extras: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class UserEmissionProfile:
+    user_id: str
+    cloud_providers: List[CloudProviderConfig]
+    cdn_configs: List[CDNConfig]
+    workforce_config: WorkforceConfig
+    onprem_configs: List[OnPremConfig]
+    reporting_period: str  
+    emission_scope_enabled: Dict[str, bool]  
+    created_at: datetime
+    updated_at: datetime

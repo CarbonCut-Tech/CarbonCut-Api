@@ -2,12 +2,10 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from decimal import Decimal
 from core.models.event import ProcessedEvent, ActiveSession
+from django.db import IntegrityError, transaction
 import logging
-from django.db import models
 
 logger = logging.getLogger(__name__)
-
-
 class ProcessedEventData:
     def is_processed(self, reference_id: str, reference_type: str) -> bool:
         from apps.event.models import ProcessedEvent as DjangoProcessedEvent
@@ -25,27 +23,35 @@ class ProcessedEventData:
         event_type: str,
         kg_co2_emitted: Decimal,
         metadata: dict = None
-    ) -> ProcessedEvent:
+    ) -> tuple[ProcessedEvent, bool]:
         from apps.event.models import ProcessedEvent as DjangoProcessedEvent
         
-        orm_event, created = DjangoProcessedEvent.objects.get_or_create(
-            reference_id=reference_id,
-            reference_type=reference_type,
-            defaults={
-                'user_id': user_id,
-                'event_type': event_type,
-                'kg_co2_emitted': kg_co2_emitted,
-                'processed_at': datetime.now(),
-                'metadata': metadata or {}
-            }
-        )
-        
-        if not created:
-            logger.warning(
-                f"Event already processed: {reference_type}:{reference_id}"
+        try:
+            orm_event, created = DjangoProcessedEvent.objects.get_or_create(
+                reference_id=reference_id,
+                reference_type=reference_type,
+                defaults={
+                    'user_id': user_id,
+                    'event_type': event_type,
+                    'kg_co2_emitted': kg_co2_emitted,
+                    'processed_at': datetime.now(),
+                    'metadata': metadata or {}
+                }
             )
-        
-        return self._to_domain(orm_event)
+            if not created:
+                logger.info(
+                    f"Event already processed (idempotent): {reference_type}:{reference_id}"
+                )
+            return self._to_domain(orm_event), created
+        except IntegrityError as e:
+            logger.warning(
+                f"processing for {reference_type}:{reference_id}"
+            )
+            orm_event = DjangoProcessedEvent.objects.get(
+                reference_id=reference_id,
+                reference_type=reference_type
+            )
+            return self._to_domain(orm_event), False
     
     def get_processed_events(
         self,
@@ -74,8 +80,6 @@ class ProcessedEventData:
             processed_at=orm_event.processed_at,
             metadata=orm_event.metadata or {}
         )
-
-
 class ActiveSessionData:
     def get_or_create(
         self,
@@ -83,7 +87,6 @@ class ActiveSessionData:
         user_id: str,
         api_key: str
     ) -> ActiveSession:
-        """Get or create active session"""
         from apps.event.models import ActiveSession as DjangoActiveSession
         from django.utils import timezone
         
@@ -100,69 +103,62 @@ class ActiveSessionData:
         
         return self._to_domain(orm_session)
     
-    def update_activity(self, session_id: str) -> ActiveSession:
+    def update_activity(
+        self,
+        session_id: str,
+    ) -> None:
         from apps.event.models import ActiveSession as DjangoActiveSession
         from django.utils import timezone
+        from django.db.models import F
         
-        orm_session = DjangoActiveSession.objects.get(session_id=session_id)
-        orm_session.last_event_at = timezone.now()
-        orm_session.event_count += 1
-        orm_session.save(update_fields=['last_event_at', 'event_count'])
-        
-        return self._to_domain(orm_session)
-    
-    def mark_processed(self, session_id: str):
-        from apps.event.models import ActiveSession as DjangoActiveSession
-        from django.utils import timezone
-        
-        DjangoActiveSession.objects.filter(session_id=session_id).update(
-            last_processed_at=timezone.now()
+        DjangoActiveSession.objects.filter(
+            session_id=session_id
+        ).update(
+            last_event_at=timezone.now(),
+            event_count=F('event_count') + 1
         )
     
-    def get_active_sessions(self, inactive_threshold_minutes: int = 5) -> List[ActiveSession]:
+    def get_active_sessions(
+        self,
+        timeout_minutes: int = 30
+    ) -> List[ActiveSession]:
         from apps.event.models import ActiveSession as DjangoActiveSession
         from django.utils import timezone
+        from datetime import timedelta
         
-        threshold = timezone.now() - timedelta(minutes=inactive_threshold_minutes)
-        orm_sessions = DjangoActiveSession.objects.filter(
-            status='active'
-        ).filter(
-            models.Q(last_processed_at__isnull=True) |
-            models.Q(last_processed_at__lt=threshold)
-        )
-        
-        return [self._to_domain(s) for s in orm_sessions]
-    
-    def get_inactive_sessions(self, timeout_minutes: int = 30) -> List[ActiveSession]:
-        from apps.event.models import ActiveSession as DjangoActiveSession
-        from django.utils import timezone
-        
-        cutoff = timezone.now() - timedelta(minutes=timeout_minutes)
+        cutoff_time = timezone.now() - timedelta(minutes=timeout_minutes)
         
         orm_sessions = DjangoActiveSession.objects.filter(
             status='active',
-            last_event_at__lt=cutoff
+            last_event_at__gte=cutoff_time
         )
         
         return [self._to_domain(s) for s in orm_sessions]
     
-    def mark_inactive(self, session_id: str):
+    def mark_processed(
+        self,
+        session_id: str,
+        processed_at: datetime
+    ) -> None:
         from apps.event.models import ActiveSession as DjangoActiveSession
         
-        DjangoActiveSession.objects.filter(session_id=session_id).update(
-            status='inactive'
+        DjangoActiveSession.objects.filter(
+            session_id=session_id
+        ).update(
+            last_processed_at=processed_at
         )
-        
-        logger.info(f"Session marked inactive: {session_id}")
     
-    def mark_closed(self, session_id: str):
+    def close_session(
+        self,
+        session_id: str
+    ) -> None:
         from apps.event.models import ActiveSession as DjangoActiveSession
         
-        DjangoActiveSession.objects.filter(session_id=session_id).update(
+        DjangoActiveSession.objects.filter(
+            session_id=session_id
+        ).update(
             status='closed'
         )
-        
-        logger.info(f"Session closed: {session_id}")
     
     def _to_domain(self, orm_session) -> ActiveSession:
         return ActiveSession(
@@ -172,6 +168,5 @@ class ActiveSessionData:
             last_event_at=orm_session.last_event_at,
             event_count=orm_session.event_count,
             status=orm_session.status,
-            created_at=orm_session.created_at,
-            last_processed_at=orm_session.last_processed_at
+            last_processed_at=orm_session.last_processed_at,
         )

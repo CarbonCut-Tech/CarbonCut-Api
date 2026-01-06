@@ -4,7 +4,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from apps.auth.models import User
 from ..models import APIKey, ConversionRule
-from ..services.apikey_service import APIKeyService
+from core.services import APIKeyService
 
 User = get_user_model()
 

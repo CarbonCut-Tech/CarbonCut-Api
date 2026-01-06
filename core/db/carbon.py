@@ -2,6 +2,8 @@ from typing import Optional, List
 from decimal import Decimal
 from datetime import datetime
 from core.models.carbon_account import CarbonBalance, CarbonTransaction
+from django.db.models import F
+from django.db import transaction
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,14 +25,20 @@ class CarbonData:
     def save_balance(self, balance: CarbonBalance):
         from apps.event.models import CarbonBalance as DjangoCarbonBalance
         
-        DjangoCarbonBalance.objects.update_or_create(
-            user_id=balance.user_id,
-            defaults={
-                'total_emissions_kg': balance.total_emissions_kg,
-                'balance_kg': balance.balance_kg,
-                'last_transaction_at': balance.last_transaction_at,
-            }
-        )
+        with transaction.atomic():
+            current = DjangoCarbonBalance.objects.select_for_update().get(
+                user_id=balance.user_id
+            )
+            emissions_delta = balance.total_emissions_kg - current.total_emissions_kg
+            balance_delta = balance.balance_kg - current.balance_kg
+            
+            DjangoCarbonBalance.objects.filter(
+                user_id=balance.user_id
+            ).update(
+                total_emissions_kg=F('total_emissions_kg') + emissions_delta,
+                balance_kg=F('balance_kg') + balance_delta,
+                last_transaction_at=balance.last_transaction_at,
+            )
     
     def save_transaction(self, transaction: CarbonTransaction):
         from apps.event.models import CarbonTransaction as DjangoCarbonTransaction

@@ -59,7 +59,7 @@ class GoogleOAuthService:
                         "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
                         "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/tokenww",
+                        "token_uri": "https://oauth2.googleapis.com/token",  # FIXED: was "tokenww"
                         "redirect_uris": [redirect_uri],
                     }
                 },
@@ -88,6 +88,7 @@ class GoogleOAuthService:
         except Exception as e:
             logger.error(f"Error exchanging code for tokens: {e}", exc_info=True)
             return None, str(e)
+    
     def get_user_info(self, access_token: str) -> Tuple[Optional[Dict], Optional[str]]:
         try:
             response = requests.get(

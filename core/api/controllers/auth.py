@@ -193,8 +193,8 @@ class GoogleOAuthRedirectView(View):
             controller = AuthController()
             authorization_url, state = controller.oauth_service.get_authorization_url()
             
-            request.session['google_oauth_state'] = state
-            request.session.modified = True
+            request.services['google_oauth_state'] = state
+            request.services.modified = True
             
             return redirect(authorization_url)
             
@@ -228,9 +228,9 @@ class GoogleOAuthCallbackView(View):
             if not request_data.code or not request_data.state:
                 return redirect(f"{frontend_callback_url}?error=missing_parameters")
             
-            session_state = request.session.get('google_oauth_state')
+            services_state = request.services.get('google_oauth_state')
             is_valid, error = controller.oauth_service.validate_state(
-                session_state, 
+                services_state, 
                 request_data.state
             )
             
@@ -238,9 +238,9 @@ class GoogleOAuthCallbackView(View):
                 logger.error(f"State validation failed: {error}")
                 return redirect(f"{frontend_callback_url}?error=csrf_check_failed")
             
-            del request.session['google_oauth_state']
+            del request.services['google_oauth_state']
             
-            user_id = request.session.get('google_oauth_user_id')
+            user_id = request.services.get('google_oauth_user_id')
             if not user_id:
                 return redirect(f"{frontend_callback_url}?error=not_authenticated")
             
@@ -281,9 +281,9 @@ class GoogleOAuthCallbackView(View):
             if error:
                 return redirect(f"{frontend_callback_url}?error=credential_save_failed")
         
-            if 'google_oauth_user_id' in request.session:
-                del request.session['google_oauth_user_id']
-                request.session.modified = True
+            if 'google_oauth_user_id' in request.services:
+                del request.services['google_oauth_user_id']
+                request.services.modified = True
             
             logger.info(f"Google Ads connected for user: {user.email}")
             

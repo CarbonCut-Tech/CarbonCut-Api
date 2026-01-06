@@ -1,6 +1,6 @@
 from core.services.carbon_accounting import CarbonAccountingService
 from core.services.event_dispatcher import EventDispatcher
-from core.services.session_service import SessionService
+from core.services.session.session_service import SessionService
 from core.services.event_queue import EventQueueService
 from core.services.apikey_service import APIKeyService
 from django.views.decorators.csrf import csrf_exempt

@@ -2,7 +2,7 @@ from typing import Optional, List
 from datetime import datetime
 from core.models.apikey import APIKey, ConversionRule
 import logging
-
+from time import timezone
 logger = logging.getLogger(__name__)
 
 class APIKeyData:
@@ -71,14 +71,15 @@ class APIKeyData:
             return False
     
     def increment_usage(self, api_key: APIKey) -> APIKey:
+        from django.db.models import F
         from apps.apikey.models import APIKey as DjangoAPIKey
-        from django.utils import timezone
+        
+        DjangoAPIKey.objects.filter(external_id=api_key.id).update(
+            usage_count=F('usage_count') + 1,
+            last_used_at=timezone.now()
+        )
         
         orm_key = DjangoAPIKey.objects.get(external_id=api_key.id)
-        orm_key.usage_count += 1
-        orm_key.last_used_at = timezone.now()  
-        orm_key.save(update_fields=['usage_count', 'last_used_at'])
-        
         return self._to_domain(orm_key)
     
     def _to_domain(self, orm_key) -> APIKey:

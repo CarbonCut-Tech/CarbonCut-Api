@@ -1,8 +1,8 @@
 from decimal import Decimal
 from datetime import datetime
 from typing import Optional
-from ..models.session import Session, SessionEvent
-from ..rules.session_rules import SessionRules
+from ...models.session import Session, SessionEvent
+from ...rules.session_rules import SessionRules
 
 class SessionManager:
     def __init__(self):
